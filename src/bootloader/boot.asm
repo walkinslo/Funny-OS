@@ -69,7 +69,6 @@ main:
 	; setup stack
 	mov ss, ax
 	mov sp, 0x7C00
-	mov si, msg_hello
 
   ; прочитаем что нибудь с диска
   ; биос должен установить номер диска, с которого грузимся
@@ -82,7 +81,10 @@ main:
 
 	mov si, msg_hello
 	call puts
+
+  cli 
   hlt
+  
 
 ;
 ; Обработка ошибок
@@ -92,19 +94,18 @@ floppy_read_error:
   call puts
   jmp wait_any_key_and_reboot
 
+
 wait_any_key_and_reboot:
   mov ah, 0
   int 16h                             ; ждем нажатия на клавишу
   jmp 0FFFFh:0                        ; прыгаем в начало биоса, что должно перезагрузить машину
-
-msg_hello:          db "Funny kernel has booted", ENDL, 0
-msg_read_failed:    db "Read failed", ENDL, 0
 
 .halt:
   cli
   htl
 
 lba_to_chs:
+
   push ax
   push dx
 
@@ -119,12 +120,12 @@ lba_to_chs:
                                       ; dx = (LBA / bdb_sectors_per_track) % bdb_heads = heads
   mov dh, dl
   mov ch, al
-
   shl ah, 6
   or cl, ah
 
   pop ax
-
+  mov dl, al
+  pop ax
   ret
 
 disk_read:
@@ -176,10 +177,17 @@ disk_read:
 disk_reset:
   pusha
   mov ah, 0
+  stc
   int 13h
   jc floppy_read_error
   popa
   ret
+
+
+
+msg_hello:          db "Funny kernel has booted", ENDL, 0
+msg_read_failed:    db "Read failed", ENDL, 0
+
 
 times 510-($-$$) db 0
 dw 0AA55h
